@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="OpsAI">
+<meta name="theme-color" content="#0A0E1A">
+<meta name="description" content="AI-powered digital operations platform">
+<link rel="manifest" href="manifest.json">
+
+<!-- PWA icon inline via canvas (no external files needed) -->
+<title>OpsAI</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+:root{
+  --bg:#0A0E1A; --panel:#0D1425; --surface:#111827;
+  --surface2:#1E293B; --border:#1E293B; --border2:#334155;
+  --text:#F1F5F9; --text2:#94A3B8; --text3:#475569;
+  --blue:#38BDF8; --purple:#818CF8; --green:#34D399;
+  --amber:#F59E0B; --pink:#F472B6; --violet:#A78BFA;
+  --mono:'JetBrains Mono',monospace;
+  --sans:'Space Grotesk',system-ui,sans-serif;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:var(--sans);}
+body{display:flex;flex-direction:column;}
+
+/* Scrollbars */
+::-webkit-scrollbar{width:3px;}
+::-webkit-scrollbar-track{background:var(--bg);}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px;}
+
+/* Header */
+#header{
+  flex-shrink:0;
+  background:var(--panel);
+  border-bottom:1px solid var(--border);
+  padding:12px 16px 0;
+  z-index:10;
+}
+.header-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+.logo{display:flex;align-items:center;gap:10px;}
+.logo-icon{
+  width:34px;height:34px;border-radius:9px;
+  background:linear-gradient(135deg,var(--blue),var(--purple));
+  display:flex;align-items:center;justify-content:center;
+  font-size:18px;flex-shrink:0;
+}
+.logo-name{font-size:16px;font-weight:700;letter-spacing:-0.02em;}
+.logo-sub{font-size:9px;color:var(--text3);letter-spacing:0.1em;text-transform:uppercase;}
+.live-pill{
+  font-size:10px;font-weight:700;
+  padding:4px 10px;border-radius:20px;
+  background:rgba(52,211,153,0.12);color:var(--green);
+  border:1px solid rgba(52,211,153,0.25);
+  display:flex;align-items:center;gap:5px;
+}
+.live-dot{width:5px;height:5px;border-radius:50%;background:var(--green);animation:pulse 2s infinite;}
+
+/* System chips */
+.systems{
+  display:flex;gap:5px;overflow-x:auto;padding-bottom:10px;
+  scrollbar-width:none;
+}
+.systems::-webkit-scrollbar{display:none;}
+.sys-chip{
+  flex-shrink:0;font-size:10px;font-weight:600;
+  padding:3px 10px;border-radius:20px;
+  white-space:nowrap;
+}
+
+/* Feed */
+#feed{
+  flex:1;overflow-y:auto;
+  padding:14px 14px 0;
+  scroll-behavior:smooth;
+}
+
+/* Empty state */
+#empty{
+  display:flex;flex-direction:column;align-items:center;
+  padding:40px 20px;text-align:center;
+}
+#empty .big-icon{font-size:44px;margin-bottom:14px;}
+#empty h2{font-size:20px;font-weight:700;letter-spacing:-0.02em;margin-bottom:6px;}
+#empty p{font-size:13px;color:var(--text3);line-height:1.6;margin-bottom:24px;}
+.chips-wrap{display:flex;flex-wrap:wrap;gap:7px;justify-content:center;}
+.sugg-chip{
+  font-size:11.5px;padding:7px 13px;
+  background:var(--surface);color:var(--text2);
+  border:1px solid var(--border2);border-radius:20px;
+  cursor:pointer;transition:all 0.15s;font-family:var(--sans);
+}
+.sugg-chip:active{background:var(--surface2);color:var(--text);border-color:var(--blue);}
+
+/* Op card */
+.op-card{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:13px;
+  padding:14px;
+  margin-bottom:12px;
+  transition:border-color 0.3s,box-shadow 0.3s;
+}
+.op-card.latest{border-color:rgba(56,189,248,0.3);box-shadow:0 0 20px rgba(56,189,248,0.08);}
+.card-header{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:12px;}
+.card-cmd{font-size:13px;font-weight:600;color:var(--text);line-height:1.4;flex:1;}
+.card-ts{font-size:10px;color:var(--text3);font-family:var(--mono);white-space:nowrap;margin-top:2px;}
+.tool-badge{
+  flex-shrink:0;font-size:10px;font-weight:700;
+  padding:3px 9px;border-radius:20px;
+  white-space:nowrap;
+}
+
+/* Pipeline */
+.pipeline{display:flex;flex-direction:column;}
+.pipe-step{display:flex;gap:9px;align-items:flex-start;transition:opacity 0.4s;}
+.pipe-step.dim{opacity:0.25;}
+.pipe-left{display:flex;flex-direction:column;align-items:center;flex-shrink:0;}
+.pipe-dot{
+  width:24px;height:24px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:10px;font-weight:700;
+  border:2px solid var(--border2);
+  background:var(--bg);color:var(--text3);
+  transition:all 0.3s;flex-shrink:0;
+}
+.pipe-dot.done{color:var(--bg);font-size:11px;}
+.pipe-dot.active{animation:glowPulse 1.5s infinite;}
+.pipe-line{width:2px;flex:1;min-height:16px;background:var(--border);transition:background 0.3s;}
+.pipe-body{padding-bottom:12px;flex:1;min-width:0;}
+.pipe-label{
+  font-size:9.5px;font-weight:700;letter-spacing:0.1em;
+  text-transform:uppercase;color:var(--text3);
+  margin-bottom:3px;transition:color 0.3s;
+}
+.pipe-label.active,.pipe-label.done{color:inherit;}
+.pipe-value{
+  font-size:11px;font-family:var(--mono);
+  background:var(--bg);border:1px solid var(--border);
+  border-radius:6px;padding:5px 8px;
+  color:var(--text2);word-break:break-word;
+  line-height:1.5;
+  animation:fadeUp 0.3s ease;
+}
+
+/* Result box */
+.result-box{
+  background:var(--bg);
+  border-radius:9px;padding:11px 13px;
+  margin-top:4px;
+  animation:fadeUp 0.4s ease;
+}
+.result-label{
+  font-size:9.5px;font-weight:700;letter-spacing:0.1em;
+  text-transform:uppercase;margin-bottom:6px;
+}
+.result-text{font-size:13px;color:#E2E8F0;line-height:1.6;}
+
+/* Data table */
+.tbl-wrap{overflow-x:auto;margin-top:9px;border-radius:7px;border:1px solid var(--border2);}
+table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:10.5px;}
+th{
+  padding:5px 9px;text-align:left;
+  background:var(--surface2);color:var(--blue);
+  font-weight:700;letter-spacing:0.06em;text-transform:uppercase;font-size:9px;
+  border-bottom:1px solid var(--border2);white-space:nowrap;
+}
+td{padding:5px 9px;color:#CBD5E1;border-bottom:1px solid var(--border);}
+tr:last-child td{border-bottom:none;}
+tr:nth-child(even) td{background:rgba(255,255,255,0.02);}
+
+/* Input area */
+#input-area{
+  flex-shrink:0;
+  background:var(--panel);
+  border-top:1px solid var(--border);
+  padding:12px 14px;
+  padding-bottom:calc(12px + var(--safe-bottom));
+}
+.input-box{
+  display:flex;gap:9px;align-items:flex-end;
+  background:var(--surface);
+  border:1.5px solid var(--border2);
+  border-radius:13px;padding:10px 12px;
+  transition:border-color 0.2s;
+}
+.input-box:focus-within{border-color:rgba(56,189,248,0.5);}
+#cmd-input{
+  flex:1;background:transparent;border:none;
+  color:var(--text);font-size:14px;resize:none;
+  font-family:var(--sans);line-height:1.5;
+  min-height:22px;max-height:100px;
+  caret-color:var(--blue);
+}
+#cmd-input:focus{outline:none;}
+#cmd-input::placeholder{color:var(--text3);}
+#send-btn{
+  width:36px;height:36px;border-radius:9px;border:none;
+  display:flex;align-items:center;justify-content:center;
+  font-size:17px;font-weight:700;cursor:pointer;
+  transition:all 0.2s;flex-shrink:0;
+}
+#send-btn.ready{background:linear-gradient(135deg,var(--blue),var(--purple));color:#0A0E1A;}
+#send-btn.idle{background:var(--surface2);color:var(--text3);cursor:default;}
+.input-hint{font-size:10px;color:var(--text3);text-align:center;margin-top:6px;}
+
+/* Spinner */
+.spinner{
+  width:14px;height:14px;border:2px solid var(--border2);
+  border-top-color:var(--blue);border-radius:50%;
+  animation:spin 0.7s linear infinite;
+}
+
+/* Animations */
+@keyframes fadeUp{from{opacity:0;transform:translateY(5px);}to{opacity:1;transform:translateY(0);}}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.4;}}
+@keyframes spin{to{transform:rotate(360deg);}}
+@keyframes glowPulse{0%,100%{box-shadow:0 0 0 0 currentColor;}50%{box-shadow:0 0 8px 2px currentColor;}}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div id="header">
+  <div class="header-top">
+    <div class="logo">
+      <div class="logo-icon">⚡</div>
+      <div>
+        <div class="logo-name">OpsAI</div>
+        <div class="logo-sub">Digital Operations Platform</div>
+      </div>
+    </div>
+    <div class="live-pill"><div class="live-dot"></div>Live</div>
+  </div>
+  <div class="systems" id="systems-bar"></div>
+</div>
+
+<!-- FEED -->
+<div id="feed">
+  <div id="empty">
+    <div class="big-icon">⚡</div>
+    <h2>What do you need?</h2>
+    <p>Describe any task in plain language.<br>OpsAI routes it to the right system.</p>
+    <div class="chips-wrap" id="sugg-chips"></div>
+  </div>
+</div>
+
+<!-- INPUT -->
+<div id="input-area">
+  <div class="input-box">
+    <textarea id="cmd-input" rows="1" placeholder="Ask anything — in plain English…"></textarea>
+    <button id="send-btn" class="idle">↑</button>
+  </div>
+  <div class="input-hint">Connected to 5 systems · Tap a suggestion above to try</div>
+</div>
+
+<script>
+// ── Data ─────────────────────────────────────────────────────────────────────
+const DB = {
+  employees:[
+    {id:1,name:"Amara Osei",dept:"Engineering",salary:85000,joined:"2021-03-15"},
+    {id:2,name:"Chisom Eze",dept:"Marketing",salary:72000,joined:"2020-07-01"},
+    {id:3,name:"Kwame Asante",dept:"Engineering",salary:91000,joined:"2019-11-20"},
+    {id:4,name:"Ngozi Adeyemi",dept:"Finance",salary:78000,joined:"2022-01-10"},
+    {id:5,name:"Tunde Bakare",dept:"Marketing",salary:68000,joined:"2023-02-28"},
+  ],
+  sales:[
+    {month:"Jan",revenue:142000,deals:24},{month:"Feb",revenue:168000,deals:31},
+    {month:"Mar",revenue:155000,deals:28},{month:"Apr",revenue:201000,deals:37},
+    {month:"May",revenue:189000,deals:34},{month:"Jun",revenue:224000,deals:41},
+  ],
+  calendar:[
+    {id:1,title:"Board Meeting",date:"2026-07-07",time:"10:00",attendees:"CEO, CFO, CTO"},
+    {id:2,title:"Product Review",date:"2026-07-08",time:"14:00",attendees:"PM Team"},
+    {id:3,title:"Q3 Planning",date:"2026-07-10",time:"09:00",attendees:"All Heads"},
+  ],
+  emails:[
+    {id:1,from:"ceo@company.com",subject:"Q3 Targets",preview:"Please review the attached targets...",unread:true},
+    {id:2,from:"client@acme.com",subject:"Contract Renewal",preview:"We'd like to discuss the renewal terms...",unread:true},
+    {id:3,from:"hr@company.com",subject:"Policy Update",preview:"New remote work policy effective...",unread:false},
+  ],
+  crm:[
+    {id:1,company:"Acme Corp",contact:"John Doe",stage:"Negotiation",value:45000,lastContact:"2026-06-28"},
+    {id:2,company:"TechStart Ltd",contact:"Jane Smith",stage:"Proposal",value:28000,lastContact:"2026-07-01"},
+    {id:3,company:"Global Ventures",contact:"Mike Chen",stage:"Discovery",value:72000,lastContact:"2026-06-25"},
+  ],
+};
+
+const TOOLS = {
+  database:{label:"PostgreSQL",icon:"🗄️",color:"#38BDF8"},
+  spreadsheet:{label:"Excel / Sheets",icon:"📊",color:"#34D399"},
+  calendar:{label:"Calendar",icon:"📅",color:"#A78BFA"},
+  email:{label:"Email",icon:"✉️",color:"#F59E0B"},
+  crm:{label:"CRM",icon:"🤝",color:"#F472B6"},
+};
+
+const SUGGESTIONS = [
+  "Show all Engineering employees",
+  "Total revenue this quarter",
+  "Meetings this week",
+  "List unread emails",
+  "CRM deals in negotiation",
+  "Average salary by department",
+  "Best performing month",
+  "All open CRM deals and their value",
+];
+
+const SYSTEM_PROMPT = `You are the AI core of a digital operations platform. When a user sends a natural language request, you must:
+1. Identify the INTENT
+2. Select the right TOOL from: database, spreadsheet, calendar, email, crm
+3. Write the QUERY in the tool's native format
+4. Return the RESULT using real data below
+
+Data available:
+- database: employees [id,name,dept,salary,joined], sales [month,revenue,deals]
+- spreadsheet: same sales data
+- calendar: events [id,title,date,time,attendees]
+- email: inbox [id,from,subject,preview,unread]
+- crm: deals [id,company,contact,stage,value,lastContact]
+
+Real data values:
+Employees: Amara Osei(Engineering,85000), Chisom Eze(Marketing,72000), Kwame Asante(Engineering,91000), Ngozi Adeyemi(Finance,78000), Tunde Bakare(Marketing,68000)
+Sales: Jan(142000,24deals),Feb(168000,31),Mar(155000,28),Apr(201000,37),May(189000,34),Jun(224000,41)
+Calendar: Board Meeting Jul7 10am, Product Review Jul8 2pm, Q3 Planning Jul10 9am
+Emails: Q3 Targets(unread,ceo@company.com), Contract Renewal(unread,client@acme.com), Policy Update(read,hr@company.com)
+CRM: Acme Corp-Negotiation-$45k, TechStart-Proposal-$28k, Global Ventures-Discovery-$72k
+
+Respond ONLY with valid JSON (no markdown, no backticks):
+{"intent":"one sentence","tool":"database|spreadsheet|calendar|email|crm","toolLabel":"human name","query":"native query or command","result":"plain English answer with specific values","data":[]}
+
+data is optional array of objects for tabular results. Be specific and accurate with real values.`;
+
+// ── UI Setup ──────────────────────────────────────────────────────────────────
+// Systems bar
+const sysBar = document.getElementById('systems-bar');
+Object.entries(TOOLS).forEach(([k,t]) => {
+  const chip = document.createElement('div');
+  chip.className = 'sys-chip';
+  chip.style.cssText = `background:${t.color}15;color:${t.color};border:1px solid ${t.color}30;`;
+  chip.textContent = t.icon + ' ' + t.label;
+  sysBar.appendChild(chip);
+});
+
+// Suggestion chips
+const suggWrap = document.getElementById('sugg-chips');
+SUGGESTIONS.forEach(s => {
+  const chip = document.createElement('button');
+  chip.className = 'sugg-chip';
+  chip.textContent = s;
+  chip.onclick = () => runCommand(s);
+  suggWrap.appendChild(chip);
+});
+
+// Input auto-resize
+const input = document.getElementById('cmd-input');
+const sendBtn = document.getElementById('send-btn');
+
+input.addEventListener('input', () => {
+  input.style.height = 'auto';
+  input.style.height = Math.min(input.scrollHeight, 100) + 'px';
+  sendBtn.className = input.value.trim() ? 'ready' : 'idle';
+});
+input.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); runCommand(input.value); }
+});
+sendBtn.onclick = () => runCommand(input.value);
+
+// ── Core ──────────────────────────────────────────────────────────────────────
+let opCount = 0;
+let isLoading = false;
+
+async function runCommand(cmd) {
+  cmd = cmd.trim();
+  if (!cmd || isLoading) return;
+  isLoading = true;
+
+  // Hide empty state
+  document.getElementById('empty').style.display = 'none';
+
+  // Reset input
+  input.value = '';
+  input.style.height = 'auto';
+  sendBtn.className = 'idle';
+
+  // Create card
+  const id = ++opCount;
+  const card = createCard(id, cmd);
+  const feed = document.getElementById('feed');
+  // Remove 'latest' from previous
+  document.querySelectorAll('.op-card.latest').forEach(c => c.classList.remove('latest'));
+  feed.appendChild(card);
+  card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+  // Animate steps
+  const stepFn = (step) => animateStep(id, step);
+
+  try {
+    stepFn(1); // intent
+    await delay(350);
+
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-6",
+        max_tokens: 1000,
+        system: SYSTEM_PROMPT,
+        messages: [{ role: "user", content: cmd }],
+      }),
+    });
+
+    const json = await res.json();
+    const text = (json.content || []).map(b => b.text || '').join('');
+    const parsed = JSON.parse(text.replace(/```json|```/g, '').trim());
+
+    const tool = TOOLS[parsed.tool] || { color: '#38BDF8', icon: '⚙️', label: parsed.toolLabel };
+
+    // Update card colour
+    card.style.borderColor = tool.color + '44';
+    card.style.boxShadow = `0 0 20px ${tool.color}10`;
+    card.querySelector('.tool-badge').style.cssText =
+      `background:${tool.color}20;color:${tool.color};border:1px solid ${tool.color}40;font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px;white-space:nowrap;flex-shrink:0;`;
+    card.querySelector('.tool-badge').textContent = tool.icon + ' ' + tool.label;
+
+    // Fill intent
+    setStepValue(id, 1, parsed.intent, tool.color);
+    stepFn(2);
+    await delay(450);
+
+    setStepValue(id, 2, tool.icon + '  ' + tool.label, tool.color);
+    stepFn(3);
+    await delay(500);
+
+    setStepValue(id, 3, parsed.query, tool.color);
+    stepFn(4);
+    await delay(500);
+
+    setStepValue(id, 4, 'Completed', tool.color);
+    stepFn(5);
+    await delay(300);
+
+    // Show result
+    showResult(id, parsed.result, parsed.data, tool.color);
+
+  } catch(e) {
+    setStepValue(id, 1, 'Could not complete request', '#F87171');
+    showResult(id, 'Something went wrong — please try again. (' + e.message + ')', null, '#F87171');
+  }
+
+  isLoading = false;
+  card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// ── Card builder ──────────────────────────────────────────────────────────────
+const STEP_LABELS = ['Intent', 'Tool Selected', 'Query / Command', 'Executing', 'Response'];
+
+function createCard(id, cmd) {
+  const card = document.createElement('div');
+  card.className = 'op-card latest';
+  card.id = 'card-' + id;
+
+  const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+  let stepsHtml = STEP_LABELS.map((lbl, i) => `
+    <div class="pipe-step dim" id="step-${id}-${i+1}">
+      <div class="pipe-left">
+        <div class="pipe-dot" id="dot-${id}-${i+1}" style="color:var(--text3)">${i+1}</div>
+        ${i < 4 ? `<div class="pipe-line" id="line-${id}-${i+1}"></div>` : ''}
+      </div>
+      <div class="pipe-body">
+        <div class="pipe-label" id="lbl-${id}-${i+1}">${lbl}</div>
+        <div id="val-${id}-${i+1}" style="display:none"></div>
+      </div>
+    </div>
+  `).join('');
+
+  card.innerHTML = `
+    <div class="card-header">
+      <div>
+        <div class="card-cmd">${escHtml(cmd)}</div>
+        <div class="card-ts">${now}</div>
+      </div>
+      <div class="tool-badge" style="background:#1E293B;color:#475569;border:1px solid #334155;font-size:10px;font-weight:700;padding:3px 9px;border-radius:20px;white-space:nowrap;flex-shrink:0;">
+        ⏳ Routing…
+      </div>
+    </div>
+    <div class="pipeline">${stepsHtml}</div>
+    <div id="result-${id}" style="display:none"></div>
+  `;
+  return card;
+}
+
+function animateStep(id, step) {
+  for (let i = 1; i <= 5; i++) {
+    const stepEl = document.getElementById(`step-${id}-${i}`);
+    const dot = document.getElementById(`dot-${id}-${i}`);
+    const lbl = document.getElementById(`lbl-${id}-${i}`);
+    const line = document.getElementById(`line-${id}-${i}`);
+    if (!stepEl) continue;
+
+    if (i < step) {
+      // done
+      stepEl.classList.remove('dim');
+      dot.classList.remove('active');
+      dot.classList.add('done');
+      dot.textContent = '✓';
+      if (line) line.style.background = 'currentColor';
+    } else if (i === step) {
+      // active
+      stepEl.classList.remove('dim');
+      dot.classList.add('active');
+      lbl.classList.add('active');
+    } else {
+      stepEl.classList.add('dim');
+    }
+  }
+}
+
+function setStepValue(id, step, text, color) {
+  const dot = document.getElementById(`dot-${id}-${step}`);
+  const lbl = document.getElementById(`lbl-${id}-${step}`);
+  const val = document.getElementById(`val-${id}-${step}`);
+  const line = document.getElementById(`line-${id}-${step}`);
+  if (dot) { dot.style.color = color; dot.style.borderColor = color; dot.style.background = color + '22'; }
+  if (lbl) { lbl.style.color = color; }
+  if (line) { line.style.background = color + '66'; }
+  if (val && text) {
+    val.className = 'pipe-value';
+    val.textContent = text;
+    val.style.display = 'block';
+    val.style.borderColor = color + '33';
+  }
+}
+
+function showResult(id, text, data, color) {
+  const el = document.getElementById('result-' + id);
+  if (!el) return;
+
+  let tableHtml = '';
+  if (data && data.length > 0) {
+    const keys = Object.keys(data[0]);
+    tableHtml = `<div class="tbl-wrap"><table>
+      <thead><tr>${keys.map(k=>`<th>${k}</th>`).join('')}</tr></thead>
+      <tbody>${data.map(row=>`<tr>${keys.map(k=>`<td>${escHtml(String(row[k]))}</td>`).join('')}</tr>`).join('')}</tbody>
+    </table></div>`;
+  }
+
+  el.innerHTML = `
+    <div class="result-box" style="border:1px solid ${color}30;">
+      <div class="result-label" style="color:${color};">RESULT</div>
+      <div class="result-text">${escHtml(text)}</div>
+      ${tableHtml}
+    </div>`;
+  el.style.display = 'block';
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── PWA Service Worker ────────────────────────────────────────────────────────
+if ('serviceWorker' in navigator) {
+  // Inline service worker via blob
+  const swCode = `
+    const CACHE = 'opsai-v1';
+    self.addEventListener('install', e => {
+      e.waitUntil(caches.open(CACHE).then(c => c.addAll(['/'])));
+    });
+    self.addEventListener('fetch', e => {
+      e.respondWith(caches.match(e.request).then(r => r || fetch(e.request)));
+    });
+  `;
+  const blob = new Blob([swCode], { type: 'application/javascript' });
+  const swUrl = URL.createObjectURL(blob);
+  navigator.serviceWorker.register(swUrl).catch(() => {});
+}
+
+// ── PWA install prompt ────────────────────────────────────────────────────────
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredPrompt = e;
+  showInstallBanner();
+});
+
+function showInstallBanner() {
+  const banner = document.createElement('div');
+  banner.style.cssText = `
+    position:fixed;bottom:80px;left:50%;transform:translateX(-50%);
+    background:#1E293B;border:1px solid #334155;border-radius:12px;
+    padding:10px 16px;display:flex;align-items:center;gap:10px;
+    font-size:13px;color:#F1F5F9;z-index:100;
+    box-shadow:0 4px 20px rgba(0,0,0,0.4);
+    animation:fadeUp 0.3s ease;
+  `;
+  banner.innerHTML = `
+    <span>⚡ Add OpsAI to your home screen</span>
+    <button onclick="installApp()" style="background:linear-gradient(135deg,#38BDF8,#818CF8);color:#0A0E1A;border:none;border-radius:8px;padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;">Install</button>
+    <button onclick="this.parentElement.remove()" style="background:transparent;border:none;color:#475569;cursor:pointer;font-size:16px;">×</button>
+  `;
+  document.body.appendChild(banner);
+  setTimeout(() => banner.remove(), 8000);
+}
+
+window.installApp = async function() {
+  if (!deferredPrompt) return;
+  deferredPrompt.prompt();
+  await deferredPrompt.userChoice;
+  deferredPrompt = null;
+};
+</script>
+</body>
+</html>
